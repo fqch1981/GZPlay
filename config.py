@@ -1,0 +1,7 @@
+# 配置常量
+CONFIG_FILE = "set.ini"
+SOFTWARE_NAME = "EOS视频播放器"
+VERSION = "v3.0 所有存储桶"
+COPYRIGHT = "冯启昌"
+TEL = "15006353849(微）"
+DEFAULT_ADMIN_PASSWORD = "admin123"
