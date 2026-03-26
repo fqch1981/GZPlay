@@ -152,6 +152,22 @@ class MainWindow(QMainWindow):
         right = QWidget()
         layout = QVBoxLayout(right)
 
+        # 当前选中文件地址显示
+        self.file_path_label = QLabel("未选择文件")
+        self.file_path_label.setStyleSheet("""
+            QLabel {
+                background: #f0f0f0;
+                border: 1px solid #d0d0d0;
+                border-radius: 4px;
+                padding: 8px 12px;
+                font-size: 12px;
+                color: #333;
+            }
+        """)
+        self.file_path_label.setWordWrap(True)
+        self.file_path_label.setMinimumHeight(50)
+        layout.addWidget(self.file_path_label)
+
         # 播放器占满剩余空间
         self.video = QVideoWidget()
         self.video.setStyleSheet("background:#000; border-radius: 5px;")
@@ -297,6 +313,7 @@ class MainWindow(QMainWindow):
         if parent is None:
             # 点击的是桶
             self.current_bucket = name
+            self.file_path_label.setText(f"当前存储桶: EOS://{name}/")
 
             # 检查是否已扫描
             bucket_data = item.data(0, Qt.UserRole)
@@ -321,14 +338,14 @@ class MainWindow(QMainWindow):
                 dlg = BucketConfigDialog(name, self)
                 if dlg.exec() != QDialog.Accepted:
                     return
-                
+
                 # 保存桶专属配置（包含AK/SK/Endpoint）
                 cfg[bucket_section] = {}
                 cfg[bucket_section]['ak'] = dlg.ak.text().strip() if hasattr(dlg, 'ak') else self.config["EOS"]["ak"]
                 cfg[bucket_section]['sk'] = dlg.sk.text().strip() if hasattr(dlg, 'sk') else self.config["EOS"]["sk"]
                 cfg[bucket_section]['endpoint'] = dlg.endpoint.text().strip()
                 cfg.write()
-                
+
                 # 重新加载配置并创建客户端
                 bucket_config = self.get_bucket_config(name)
                 self.bucket_client = EosClient(
@@ -344,10 +361,17 @@ class MainWindow(QMainWindow):
         bucket = item.data(0, Qt.UserRole + 1)
         key = item.data(0, Qt.UserRole)
 
-        # 只有文件才播放
+        # 更新文件地址标签
         if key:
+            # 是文件
+            file_path = f"EOS://{bucket}/{key}"
+            self.file_path_label.setText(f"当前文件: {file_path}")
             print(f"[TreeClick] 播放文件: {name}, Bucket: {bucket}, Key: {key}")
             self.play_file(bucket, key)
+        else:
+            # 是目录
+            dir_path = f"EOS://{bucket}/{name}/" if name else ""
+            self.file_path_label.setText(f"当前目录: {dir_path}" if dir_path else "未选择文件")
 
     def refresh_bucket(self, item):
         """刷新桶内容"""
@@ -523,7 +547,7 @@ class MainWindow(QMainWindow):
     def play_file(self, bucket, key):
         # 获取桶的专属配置
         bucket_config = self.get_bucket_config(bucket)
-        
+
         # 使用桶专属配置创建临时客户端
         client = EosClient(
             bucket_config['ak'],
@@ -535,6 +559,10 @@ class MainWindow(QMainWindow):
         request_info = client.generate_direct_url(bucket, key)
         print(f"[Play] 使用桶专属配置: {bucket}")
         print(f"[Play] 下载URL: {request_info['url']}")
+
+        # 更新文件地址标签
+        file_path = f"EOS://{bucket}/{key}"
+        self.file_path_label.setText(f"正在播放: {file_path}")
 
         # 下载文件到临时目录
         import requests
